@@ -1,0 +1,70 @@
+SSE EVENT SCHEMA — /api/debate/stream
+======================================
+
+bubble_dashboard.html is already wired to this backend (its `runDebate()`
+function calls this endpoint directly), so you don't need to patch
+anything to use the two together. This file documents the event stream in
+case you're integrating a different frontend, or a different backend
+implementation, against the same contract.
+
+POST /api/debate/stream
+Body: { "ctx": { country, horizon, riskIndex, regime, burstProb,
+                 bubblePhase, topDrivers, dominantSector, backtest } }
+
+Response: text/event-stream. Each event is `data: <json>\n\n`, in this
+order for a full run:
+
+  {"type":"layer-start","layer":"reality","title":"Reality"}
+  {"type":"agent-status","layer":"reality","agentId":"macro","status":"working"}
+  {"type":"agent-result","layer":"reality","agentId":"macro","agentName":"Macro","result":{...}}
+  {"type":"agent-status","layer":"reality","agentId":"macro","status":"done"}
+  ... (repeated per agent, agents within a layer run in parallel so order
+      across agentIds is not guaranteed)
+  {"type":"layer-done","layer":"reality","entries":[{agentId,agentName,output}, ...]}
+
+  ... (repeated for marketBehaviour, systemicRisk, interpretation)
+
+  {"type":"layer-start","layer":"auditor","title":"Model Auditor"}
+  {"type":"agent-status","layer":"auditor","agentId":"modelauditor","status":"working"}
+  {"type":"auditor-result","result":{audit_summary,data_integrity_flag,concerns,double_counted_drivers}}
+  {"type":"agent-status","layer":"auditor","agentId":"modelauditor","status":"done"}
+
+  {"type":"layer-start","layer":"counsel","title":"Prosecutor vs Defender"}
+  {"type":"agent-status","layer":"counsel","agentId":"prosecutor","status":"working"}
+  {"type":"agent-status","layer":"counsel","agentId":"defender","status":"working"}
+  {"type":"counsel-result","side":"prosecutor","agentId":"prosecutor","agentName":"Bubble Prosecutor","result":{...}}
+  {"type":"counsel-result","side":"defender","agentId":"defender","agentName":"Bubble Defender","result":{...}}
+  {"type":"agent-status","layer":"counsel","agentId":"prosecutor","status":"done"}
+  {"type":"agent-status","layer":"counsel","agentId":"defender","status":"done"}
+
+  {"type":"layer-start","layer":"judge","title":"Judge / Synthesis"}
+  {"type":"agent-status","layer":"judge","agentId":"judge","status":"working"}
+  {"type":"verdict","verdict":{risk_score,confidence,verdict_label,drivers,
+                                countervailing_evidence,trigger,
+                                transmission_channel,historical_analogues,
+                                disagreement},"apiHealthy":true}
+  {"type":"agent-status","layer":"judge","agentId":"judge","status":"done"}
+
+  {"type":"done","apiHealthy":true,"ledger":[{agentName,stage,result,detail,t}, ...]}
+
+Also emitted whenever a response fails the ontology guardrail (interleaved
+wherever it happens):
+
+  {"type":"ledger","entry":{"agentName":"Macro","stage":"Reality","result":"REJECTED","detail":"...violations...","t":"..."}}
+
+And on an unrecoverable server-side error:
+
+  {"type":"error","message":"..."}
+
+`apiHealthy: false` means every agent in the run fell back to its
+deterministic local simulation (labelled `(Deterministic fallback)` in the
+text) — this happens automatically if `ANTHROPIC_API_KEY` is missing or a
+call to Anthropic fails, and the stream still completes normally rather
+than erroring out.
+
+Non-streaming equivalent: POST /api/debate/run with the same body returns
+a single JSON object once the whole run finishes:
+  { layers: { reality: [...], marketBehaviour: [...], systemicRisk: [...],
+              interpretation: [...] },
+    auditor: {...}, prosecutor: {...}, defender: {...}, verdict: {...},
+    ledger: [...], apiHealthy: true|false }
