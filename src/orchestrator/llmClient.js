@@ -1,27 +1,38 @@
 // src/orchestrator/llmClient.js
 // The one function that replaces what Claude Artifacts used to do for free:
-// an authorized call to the Anthropic Messages API. Here it runs server-side,
+// an authorized call to the Gemini API. Here it runs server-side,
 // with the key held in an environment variable, never sent to the browser.
-
 import { config, assertConfigured } from '../config/models.js';
 
 export async function callLLM(systemPrompt, userPrompt) {
   assertConfigured();
 
-  const resp = await fetch(config.apiUrl, {
+  const url = `${config.apiUrl}/${config.model}:generateContent?key=${config.apiKey}`;
+
+  const resp = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': config.apiKey,
-      'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: config.model,
-      max_tokens: config.maxTokens,
-      system:
-        systemPrompt +
-        ' Respond with ONLY a single JSON object, no markdown fences, no preamble, no commentary outside the JSON.',
-      messages: [{ role: 'user', content: userPrompt }],
+      systemInstruction: {
+        parts: [
+          {
+            text:
+              systemPrompt +
+              ' Respond with ONLY a single JSON object, no markdown fences, no preamble, no commentary outside the JSON.',
+          },
+        ],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userPrompt }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: config.maxTokens,
+      },
     }),
   });
 
@@ -31,9 +42,8 @@ export async function callLLM(systemPrompt, userPrompt) {
   }
 
   const data = await resp.json();
-  const text = (data.content || [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
+  const text = (data.candidates?.[0]?.content?.parts || [])
+    .map((p) => p.text || '')
     .join('');
 
   const cleaned = text.replace(/```json|```/g, '').trim();
