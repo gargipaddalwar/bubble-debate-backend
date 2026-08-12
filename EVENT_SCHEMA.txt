@@ -58,8 +58,8 @@ And on an unrecoverable server-side error:
 
 `apiHealthy: false` means every agent in the run fell back to its
 deterministic local simulation (labelled `(Deterministic fallback)` in the
-text) — this happens automatically if `ANTHROPIC_API_KEY` is missing or a
-call to Anthropic fails, and the stream still completes normally rather
+text) — this happens automatically if `GEMINI_API_KEY` is missing or a
+call to Gemini fails, and the stream still completes normally rather
 than erroring out.
 
 Non-streaming equivalent: POST /api/debate/run with the same body returns
