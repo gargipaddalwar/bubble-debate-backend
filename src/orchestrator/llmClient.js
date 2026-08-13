@@ -1,7 +1,4 @@
 // src/orchestrator/llmClient.js
-// The one function that replaces what Claude Artifacts used to do for free:
-// an authorized call to the Gemini API. Here it runs server-side,
-// with the key held in an environment variable, never sent to the browser.
 import { config, assertConfigured } from '../config/models.js';
 
 export async function callLLM(systemPrompt, userPrompt) {
@@ -32,6 +29,8 @@ export async function callLLM(systemPrompt, userPrompt) {
       ],
       generationConfig: {
         maxOutputTokens: config.maxTokens,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
