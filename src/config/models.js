@@ -5,7 +5,7 @@
 export const config = {
   provider: 'gemini',
   model: process.env.MODEL || 'gemini-1.5-flash',
-  maxTokens: 700,
+  maxTokens: 1024,
   apiKey: process.env.GEMINI_API_KEY,
   apiUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
 };
