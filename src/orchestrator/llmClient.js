@@ -30,7 +30,6 @@ export async function callLLM(systemPrompt, userPrompt) {
       generationConfig: {
         maxOutputTokens: config.maxTokens,
         responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   });
